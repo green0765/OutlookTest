@@ -23,7 +23,7 @@ public class CalenderView extends View {
     //Colors of every part of the view
     private int mDayColor = Color.parseColor("#000000");
     private int mSelectDayColor = Color.parseColor("#ffffff");
-    private int mSelectBGColor = Color.parseColor("#1FC2F3");
+    private int mSelectBGColor = Color.parseColor("#0071C6");
     private int mCurrentColor = Color.parseColor("#ff0000");
     private int mCircleColor = Color.parseColor("#ff0000");
     private int mWeekendColor = Color.parseColor("#ff0000");
@@ -31,7 +31,7 @@ public class CalenderView extends View {
     //Size param
     private int mColumnSize,mRowSize;
     private int mDaySize = 18;
-    private int mCircleRadius = 8;
+    private int mCircleRadius = 6;
 
     //Data param
     //Note: Month began with 0
@@ -77,7 +77,7 @@ public class CalenderView extends View {
     protected void onDraw(Canvas canvas) {
         initSize();
         daysString = new int[7][7];
-        mPaint.get().setTextSize(mDaySize*mDisplayMetrics.scaledDensity);
+
         String dayString;
         int mMonthDays = getMonthDays(mSelYear,mSelMonth);
         mCalendar.clear();
@@ -85,6 +85,7 @@ public class CalenderView extends View {
         int weekNumber = mCalendar.get(Calendar.DAY_OF_WEEK);
 
         // Draw the Week Label
+        mPaint.get().setTextSize( (float) 0.7 * mDaySize * mDisplayMetrics.scaledDensity);
         for(int i=0;i < WEEK_STRING.length;i++){
             String text = WEEK_STRING[i];
             int startX = (int) (mColumnSize * i + (mColumnSize - mPaint.get().measureText(text))/2);
@@ -97,8 +98,20 @@ public class CalenderView extends View {
             canvas.drawText(text, startX, startY, mPaint.get());
         }
 
-        //Draw the Date
-        Log.d("DateView", "DateView:" + mSelMonth+"月1号周" + weekNumber);
+        mPaint.get().setTextSize(mDaySize * mDisplayMetrics.scaledDensity);
+        //Draw the Date of previous month
+        mPaint.get().setColor(Color.GRAY);
+        for(int day = 0; day < weekNumber - 1; day++){
+            mCalendar.add(Calendar.DATE, -1);
+            dayString = String.valueOf(mCalendar.get(Calendar.DATE));
+            int column = weekNumber - day - 2;
+            int row = 1;
+            int X = (int) (mColumnSize * column + (mColumnSize - mPaint.get().measureText(dayString))/2);;
+            int Y = (int) (mRowSize * row + mRowSize/2 - (mPaint.get().ascent() + mPaint.get().descent())/2);
+            canvas.drawText(dayString, X, Y, mPaint.get());
+        }
+
+        //Draw the Data of this month
         for(int day = 0;day < mMonthDays;day++){
             dayString = (day + 1) + "";
             int column = (day + weekNumber - 1) % 7;
@@ -113,12 +126,13 @@ public class CalenderView extends View {
                 int endRecX = startRecX + mColumnSize/2;
                 int endRecY = startRecY + mRowSize/2;
                 mPaint.get().setColor(mSelectBGColor);
-                canvas.drawCircle(endRecX, endRecY, mColumnSize / 2, mPaint.get());
-                //canvas.drawRect(startRecX, startRecY, endRecX, endRecY, mPaint.get());
+                canvas.drawCircle(endRecX, endRecY, mRowSize / 2, mPaint.get());
             }
 
             //Draw mark for the day that has events
             drawCircle(row,column,day + 1,canvas);
+
+            //Make different font color for the date in different status
             if(dayString.equals(mSelDay+"")){
                 mPaint.get().setColor(mSelectDayColor);
             }else if(dayString.equals(mCurrDay+"") && mCurrDay != mSelDay && mCurrMonth == mSelMonth){
@@ -130,6 +144,19 @@ public class CalenderView extends View {
             canvas.drawText(dayString, startX, startY, mPaint.get());
 
         }
+        //Draw the Data of next month
+        mPaint.get().setColor(Color.GRAY);
+        mCalendar.clear();
+        mCalendar.set(mSelYear,mSelMonth,mMonthDays);
+        for(int day = weekNumber + mMonthDays - 1; day < 42; day++){
+            mCalendar.add(Calendar.DATE, 1);
+            dayString = String.valueOf(mCalendar.get(Calendar.DATE));
+            int column = day % 7;
+            int row = day / 7 + 1;
+            int X = (int) (mColumnSize * column + (mColumnSize - mPaint.get().measureText(dayString))/2);;
+            int Y = (int) (mRowSize * row + mRowSize/2 - (mPaint.get().ascent() + mPaint.get().descent())/2);
+            canvas.drawText(dayString, X, Y, mPaint.get());
+        }
     }
 
     private void drawCircle(int row,int column,int day,Canvas canvas){
@@ -138,7 +165,7 @@ public class CalenderView extends View {
                 return;
             mPaint.get().setColor(mCircleColor);
             float circleX = (float) (mColumnSize * column + mColumnSize*0.5);
-            float circleY = (float) (mRowSize * row + mRowSize*0.7);
+            float circleY = (float) (mRowSize * row + mRowSize*0.9);
             canvas.drawCircle(circleX, circleY, mCircleRadius, mPaint.get());
         }
     }
@@ -189,9 +216,6 @@ public class CalenderView extends View {
         mSelDay = day;
     }
 
-    /**
-     *
-     */
     private void doClickAction(int x,int y){
         int row = y / mRowSize;
         int column = x / mColumnSize;
@@ -206,7 +230,7 @@ public class CalenderView extends View {
 
         //Do the Click Action
         if(dateClick != null){
-            dateClick.onClickOnDate();
+            dateClick.onClickOnDate(mSelYear,mSelMonth,daysString[row][column]);
         }
     }
 
@@ -314,7 +338,7 @@ public class CalenderView extends View {
      *
      */
     public interface DateClick{
-        public void onClickOnDate();
+        public void onClickOnDate(int year, int month, int day);
     }
 
     /**
