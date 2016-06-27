@@ -1,13 +1,17 @@
 package com.ms.outlook.adapter;
 
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationManager;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.johnhiott.darkskyandroidlib.RequestBuilder;
 import com.johnhiott.darkskyandroidlib.models.DataBlock;
@@ -31,6 +35,7 @@ public class AgendaItemAdapter extends BaseAdapter {
     public static final int VIEW_HEIGHT = 80;
     private static final int TODAY_TEXT_COLOR = Color.parseColor("#19487E");
     private static final int TODAY_BG_COLOR = Color.parseColor("#F4F9FE");
+    private static DataBlock mDataBlockHourly;
     private List<Event> mEventList;
     private Context mContext;
     private Calendar mCalendar;
@@ -40,7 +45,6 @@ public class AgendaItemAdapter extends BaseAdapter {
     private String mDateString;
     private boolean mShowWeather = false;
     private int mPositionOffset = 1;
-    private DataBlock mDataBlockHourly;
     private WeatherView mMorningView,mAfternoonView,mEveningView;
 
     public AgendaItemAdapter(Context context, List<Event> list, int year, int month, int day) {
@@ -56,6 +60,10 @@ public class AgendaItemAdapter extends BaseAdapter {
         mEventViewList = new ArrayList<EventItemView>();
         mCalendar.clear();
         mCalendar.set(mYear, mMonth, mDay);
+        if(isToday() || isTomorrow()) {
+            createWeatherViews();
+            getWeather();
+        }
     }
 
     private TextView createDateItem(){
@@ -76,34 +84,24 @@ public class AgendaItemAdapter extends BaseAdapter {
         mDateString =  week + "," + month + " " + day;
 
         //If the date is yesterday
-        Calendar currCalender = Calendar.getInstance();
-        currCalender.clear();
-        currCalender.set(mCurrYear,mCurrMonth,mCurrDay);
-        currCalender.add(Calendar.DATE, -1);
-        if( mCalendar.compareTo(currCalender) == 0){
+        if( isYesterday()){
             mDateString = "YESTERDAY · " + mDateString;
         }
 
         //If the date is today
-        currCalender.add(Calendar.DATE, 1);
-        if( mCalendar.compareTo(currCalender) == 0){
+        if( isToday()){
             mDateString = "TODAY · " + mDateString;
             dateTextView.setTextColor(TODAY_TEXT_COLOR);
             dateTextView.setBackgroundColor(TODAY_BG_COLOR);
             mShowWeather = true;
             mPositionOffset = 4;
-            getWeather();
-            createWeatherViews();
         }
 
         //If the date is tomorrow
-        currCalender.add(Calendar.DATE, 1);
-        if( mCalendar.compareTo(currCalender) == 0){
+        if( isTomorrow()){
             mDateString = "TOMORROW · " + mDateString;
             mShowWeather = true;
             mPositionOffset = 4;
-            getWeather();
-            createWeatherViews();
         }
 
         dateTextView.setText(mDateString);
@@ -120,7 +118,13 @@ public class AgendaItemAdapter extends BaseAdapter {
         noEventTextView.setLayoutParams(layoutParams);
         noEventTextView.setTextColor(Color.BLACK);
         noEventTextView.setText("No Events");
-
+        noEventTextView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Popup a Dialog to Add an Event
+                AddEvent();
+            }
+        });
         return noEventTextView;
     }
 
@@ -194,20 +198,40 @@ public class AgendaItemAdapter extends BaseAdapter {
     }
 
     private void getWeather(){
+        // To avoid repeat request
+        if (mDataBlockHourly != null){
+            updateTemperatureOfView();
+            return;
+        }
+
+        LocationManager locationManager = (LocationManager)mContext.getSystemService(Context.LOCATION_SERVICE);
+        Location location = null;
+        //Permission Check
+        if (mContext.checkCallingOrSelfPermission("android.permission.ACCESS_FINE_LOCATION") == PackageManager.PERMISSION_GRANTED) {
+            location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        }
+        double latitude = 0;
+        double longitude = 0;
+        if(location != null){
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+        }
+
         RequestBuilder weather = new RequestBuilder();
         Request request = new Request();
-        request.setLat("32.00");
-        request.setLng("-81.00");
+        request.setLat(String.valueOf(latitude));
+        request.setLng(String.valueOf(longitude));
         request.setUnits(Request.Units.US);
         request.setLanguage(Request.Language.PIG_LATIN);
-        request.addExcludeBlock(Request.Block.HOURLY);
-
+        request.addExcludeBlock(Request.Block.CURRENTLY);
         weather.getWeather(request, new Callback<WeatherResponse>() {
 
             @Override
             public void success(WeatherResponse weatherResponse, Response response) {
-                Log.i("Weather", "Get Weather success");
                 mDataBlockHourly = weatherResponse.getHourly();
+                if (mDataBlockHourly != null) {
+                    updateTemperatureOfView();
+                }
             }
 
             @Override
@@ -218,22 +242,69 @@ public class AgendaItemAdapter extends BaseAdapter {
 
     }
 
+    /**
+     * Create the WeatherView of Morning ,Afternoon and Evening
+     * Use the data from mDataBlockHourly
+     * Simply use 8 ,15 and 21 o'clock stands for morning,afternoon and evening
+     */
     private void createWeatherViews(){
+        mMorningView = new WeatherView(mContext, null, "Morning");
+        mAfternoonView = new WeatherView(mContext, null, "Afternoon");
+        mEveningView = new WeatherView(mContext, null, "Evening");
+    }
+
+    /**
+     *
+     */
+    private void AddEvent(){
+        //Just show a toast instead of dialog now
+        //TODO popup a dialog to add an Event
+        Toast.makeText(mContext, "Popup Dialog and Add An Event", Toast.LENGTH_LONG).show();
+    }
+
+    private  boolean isYesterday(){
+        Calendar currCalender = Calendar.getInstance();
+        currCalender.clear();
+        currCalender.set(mCurrYear,mCurrMonth,mCurrDay);
+        currCalender.add(Calendar.DATE, -1);
+        return mCalendar.compareTo(currCalender) == 0;
+    }
+
+    private  boolean isToday(){
+        Calendar currCalender = Calendar.getInstance();
+        currCalender.clear();
+        currCalender.set(mCurrYear,mCurrMonth,mCurrDay);
+        return mCalendar.compareTo(currCalender) == 0;
+    }
+    private  boolean isTomorrow(){
+        Calendar currCalender = Calendar.getInstance();
+        currCalender.clear();
+        currCalender.set(mCurrYear,mCurrMonth,mCurrDay);
+        currCalender.add(Calendar.DATE, 1);
+        return mCalendar.compareTo(currCalender) == 0;
+    }
+
+    private double FahrenheitToCelsius(double temp){
+        double FTemp = (temp - 32) / 1.8;
+        FTemp = ((int)(FTemp*10))/10;
+        return FTemp;
+    }
+
+    private void updateTemperatureOfView(){
+        int timeOffset = 0;
+        if(isTomorrow()){
+            timeOffset = 24;
+        }
         List<DataPoint>  dataPoints;
-        double morningTemp = 10;
-        double afternoonTemp = 11;
-        double eveningTemp = 12;
-        if (mDataBlockHourly != null) {
-            dataPoints = mDataBlockHourly.getData();
-            morningTemp = dataPoints.get(8).getTemperature();
-            afternoonTemp = dataPoints.get(15).getTemperature();
-            eveningTemp = dataPoints.get(21).getTemperature();
-        }else
-        mMorningView = new WeatherView(mContext, null, "Morning",morningTemp);
-        mAfternoonView = new WeatherView(mContext, null, "Afternoon", afternoonTemp);
-        mEveningView = new WeatherView(mContext, null, "Evening", eveningTemp);
-
-
-
+        double morningTemp;
+        double afternoonTemp;
+        double eveningTemp;
+        dataPoints = mDataBlockHourly.getData();
+        morningTemp = FahrenheitToCelsius(dataPoints.get(8 + timeOffset).getApparentTemperature());
+        afternoonTemp = FahrenheitToCelsius(dataPoints.get(15 + timeOffset).getApparentTemperature());
+        eveningTemp = FahrenheitToCelsius(dataPoints.get(21 + timeOffset).getApparentTemperature());
+        mMorningView.setTemperatureToView(morningTemp);
+        mAfternoonView.setTemperatureToView(afternoonTemp);
+        mEveningView.setTemperatureToView(eveningTemp);
     }
 }

@@ -20,15 +20,14 @@ public class WeatherView extends View {
     private int mFontSize = 40;
     private int mMarginLeft = 10;
     private String mTitle;
-    private double mTemperature;
+    private double mTemperature = Double.MIN_VALUE;
 
-    public WeatherView(Context context, AttributeSet attrs, String title, double temp) {
+    public WeatherView(Context context, AttributeSet attrs, String title) {
         super(context, attrs);
         this.mContext = context;
         this.mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         this.mBounds = new Rect();
         this.mTitle = title;
-        this.mTemperature = temp;
     }
 
     @Override
@@ -57,11 +56,21 @@ public class WeatherView extends View {
         //Draw the temperature
         mPaint.setColor(Color.BLACK);
         mPaint.setTextSize(mFontSize);
-        String temp = String.valueOf(mTemperature) + "℃";
+        String temp;
+        if (mTemperature == Double.MIN_VALUE){
+            temp = "Loading";
+        }else {
+            temp = String.valueOf(mTemperature) + "℃";
+        }
         mPaint.getTextBounds(temp, 0, temp.length(), mBounds);
         float tempWidth = mBounds.width();
         float tempHeight = mBounds.height();
         canvas.drawText(temp, getWidth() - tempWidth - mMarginLeft, getHeight() / 2 + tempHeight / 2, mPaint);
+    }
+
+    public void setTemperatureToView(double temperature){
+        this.mTemperature = temperature;
+        invalidate();
     }
 
 }

@@ -84,6 +84,11 @@ public class AgendaViewAdapter extends BaseAdapter{
         return convertView;
     }
 
+    /**
+     *  Calculate the child ListView's height and set back to parent
+     *  To make the child ListView fully display
+     * @param listView
+     */
     private void setListViewHeightBasedOnChildren(ListView listView) {
         ListAdapter listAdapter = listView.getAdapter();
         if (listAdapter == null) {

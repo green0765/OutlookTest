@@ -20,12 +20,13 @@ public class EventItemView extends View implements View.OnClickListener {
     private int mCostTimeOffsetY = 30;
     private int mCircleOffset = 200;
     private int mLocationOffsetY = 60;
+    private int mCircleRadius = 20;
 
     private Context mContext;
     private Event mEvent;
     private Paint mPaint;
     private Rect mBounds;
-    private int mCircleRadius = 20;
+
 
     public EventItemView(Context context, AttributeSet attrs, Event event) {
         super(context, attrs);
@@ -96,6 +97,8 @@ public class EventItemView extends View implements View.OnClickListener {
     }
 
     private void popupEventEditDialog(){
+        //Just show a toast instead of dialog now
+        //TODO popup a dialog to edit the Event
         Toast.makeText(mContext, "Popup Dialog and Edit the Event", Toast.LENGTH_LONG).show();
     }
 }
